@@ -324,4 +324,56 @@ class FSTest {
         assertTrue { errors.size == 1 }
         assertTrue { errors.last().first == root }
     }
+
+    @Test
+    fun `circular dependency in directories is rejected`() {
+        val dir1 = FSDirectory("foo", mutableListOf())
+        val dir2 = FSDirectory("bar", listOf(dir1))
+        (dir1.content as MutableList<FSEntry>).add(dir2)
+        val errors = creator.create(dir1, testDirectory.name)
+        assertTrue { errors.isNotEmpty() }
+        assertTrue { testDirectory.listDirectoryEntries().isEmpty() }
+    }
+
+    @Test
+    fun `more complex circular dependency is rejected`() {
+        val subdir = FSDirectory("subdir", mutableListOf())
+        val root = FSDirectory("root", listOf(
+            FSFile("foo1", "1"),
+            FSFile("foo2", "2"),
+            FSDirectory("foo3", listOf(
+                FSDirectory("bar1", listOf(
+                    FSFile("baz1", "1"),
+                    FSDirectory("botwa", listOf(
+                        subdir,
+                        FSFile("botwa1", "1")
+                    ))
+                ))
+            ))
+        ))
+        (subdir.content as MutableList<FSEntry>).add(root)
+        val errors = creator.create(root, testDirectory.name)
+        assertTrue { errors.isNotEmpty() }
+        assertTrue { testDirectory.listDirectoryEntries().isEmpty() }
+    }
+
+    @Test
+    fun `entries with the same name are allowed with different paths`() {
+        val root = FSDirectory("root", listOf(
+            FSFile("foo", "1"),
+            FSFile("bar", "1"),
+            FSFile("baz", "1"),
+            FSDirectory("dir", listOf(
+                FSFile("foo", "1"),
+                FSFile("bar", "1"),
+                FSFile("baz", "1"),
+                FSDirectory("dir", listOf(
+                    FSFile("foo", "1"),
+                    FSDirectory("root", listOf())
+                ))
+            ))
+        ))
+        val errors = creator.create(root, testDirectory.name)
+        checkSucceeded(root, errors)
+    }
 }

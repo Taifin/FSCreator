@@ -41,6 +41,8 @@ Possible errors that prevent creation:
 * `destination` is empty, or cannot be converted to path, or is not a directory in the filesystem
 * There are several entries with the same name in the same directory
 * For some entries there are files with the same name in the `destination` directory
+* Circular reference in the hierarchy (e.g. directory `foo` contains directory `bar`, which contains the same
+  directory `foo` and hence itself)
 
 Possible "runtime" errors:
 

@@ -15,12 +15,14 @@ class FSCreator {
      */
     inner class FSVisitor {
         private val creationQueue: Queue<Pair<FSEntry, Path>> = LinkedList()
+        private val visitedDirectories: MutableSet<FSDirectory> = mutableSetOf()
         val errors: MutableList<Pair<FSEntry, String>> = mutableListOf()
 
         private fun FSEntry.error(error: String) = errors.add(Pair(this, error))
         private fun FSEntry.create(path: Path) = creationQueue.add(Pair(this, path))
 
         fun create() {
+            require(visitedDirectories.isEmpty())
             require(creationQueue.isNotEmpty())
             require(errors.isEmpty())
 
@@ -51,6 +53,8 @@ class FSCreator {
             val rootFiles = mutableSetOf<String>()
 
             validate(root, path, rootFiles)
+
+            visitedDirectories.clear()
 
             return errors
         }
@@ -109,6 +113,12 @@ class FSCreator {
             destination: Path,
             existingFiles: MutableSet<String>,
         ) {
+            if (fsDirectory in visitedDirectories) {
+                fsDirectory.error("Detected circular dependency with the directory.")
+                return
+            }
+
+            visitedDirectories.add(fsDirectory)
             val directoryPath = destination.resolve(fsDirectory.name)
 
             val errorsSize = errors.size
